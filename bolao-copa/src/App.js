@@ -1,11 +1,17 @@
 import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Login from './pages/Login';
+import Jogos from './pages/Jogos'; // 1. Importação da nova tela
 
 function App() {
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-      <h1>🏆 Bolão da Copa</h1>
-      <p>Bem vindo ao bolão!</p>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        {/* 2. Definição do caminho na URL */}
+        <Route path="/jogos" element={<Jogos />} /> 
+      </Routes>
+    </BrowserRouter>
   );
 }
 
