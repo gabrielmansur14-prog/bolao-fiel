@@ -111,12 +111,10 @@ const FlagMarrocos = ({ width = 44, height = 30 }) => (
   </svg>
 );
 
-// Bola de futebol — emoji nativo (renderização perfeita em todos os navegadores)
 const BallSVG = () => (
   <span style={styles.ballIcon}>⚽</span>
 );
 
-// Troféu SVG
 const TrophySVG = () => (
   <svg width="20" height="20" viewBox="0 0 20 20">
     <path
@@ -202,6 +200,11 @@ const CSS_KEYFRAMES = `
     90%  { opacity: 0.4; }
     to   { transform: translateY(110%); opacity: 0; }
   }
+
+  @keyframes modeSlide {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 `;
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
@@ -211,11 +214,12 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '100vh',
+    minHeight: '100vh',
     background: '#000',
     fontFamily: "'Inter', 'Segoe UI', sans-serif",
     overflow: 'hidden',
     position: 'relative',
+    padding: '20px 0',
   },
   fieldBg: {
     position: 'absolute',
@@ -328,9 +332,42 @@ const styles = {
     color: '#D4AF37',
     textAlign: 'center',
     textTransform: 'uppercase',
-    marginBottom: '28px',
+    marginBottom: '20px',
     opacity: 0.8,
   },
+
+  // ── Toggle login / registro ──
+  modeTabs: {
+    display: 'flex',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(212,175,55,0.15)',
+    borderRadius: '10px',
+    padding: '4px',
+    marginBottom: '22px',
+    gap: '4px',
+  },
+  modeTab: (active) => ({
+    flex: 1,
+    padding: '9px 0',
+    fontSize: '12px',
+    fontWeight: '700',
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    borderRadius: '7px',
+    cursor: 'pointer',
+    border: 'none',
+    fontFamily: "'Inter', sans-serif",
+    transition: 'background .2s, color .2s, box-shadow .2s',
+    background: active ? '#D4AF37' : 'transparent',
+    color: active ? '#000' : 'rgba(212,175,55,0.6)',
+    boxShadow: active ? '0 2px 10px rgba(212,175,55,0.3)' : 'none',
+  }),
+
+  formSlide: {
+    animation: 'modeSlide 0.3s ease both',
+  },
+
   errorBox: {
     background: 'rgba(204,0,0,0.15)',
     border: '1px solid rgba(204,0,0,0.4)',
@@ -342,7 +379,18 @@ const styles = {
     marginBottom: '14px',
     fontWeight: '600',
   },
-  formGroup: { marginBottom: '18px' },
+  successBox: {
+    background: 'rgba(0,156,59,0.15)',
+    border: '1px solid rgba(0,156,59,0.4)',
+    color: '#4caf7d',
+    fontSize: '13px',
+    textAlign: 'center',
+    padding: '10px',
+    borderRadius: '8px',
+    marginBottom: '14px',
+    fontWeight: '600',
+  },
+  formGroup: { marginBottom: '16px' },
   label: {
     display: 'block',
     fontSize: '11px',
@@ -391,6 +439,11 @@ const styles = {
     boxShadow: '0 6px 24px rgba(212,175,55,0.4)',
     transform: 'translateY(-1px)',
   },
+  buttonDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+    transform: 'none',
+  },
   flagsStrip: {
     display: 'flex',
     justifyContent: 'center',
@@ -406,7 +459,7 @@ const styles = {
   }),
 };
 
-// ─── Partículas geradas aleatoriamente ────────────────────────────────────────
+// ─── Partículas e streaks ──────────────────────────────────────────────────────
 
 const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
   id: i,
@@ -427,15 +480,28 @@ const STREAKS = [
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function Login() {
+  const [modo, setModo]             = useState('login'); // 'login' | 'registro'
+
+  // Login
   const [email, setEmail]           = useState('');
   const [senha, setSenha]           = useState('');
+
+  // Registro
+  const [regNome, setRegNome]       = useState('');
+  const [regEmail, setRegEmail]     = useState('');
+  const [regSenha, setRegSenha]     = useState('');
+  const [regConfirma, setRegConfirma] = useState('');
+
+  // UI
   const [erro, setErro]             = useState('');
-  const [emailFocus, setEmailFocus] = useState(false);
-  const [senhaFocus, setSenhaFocus] = useState(false);
+  const [sucesso, setSucesso]       = useState('');
+  const [loading, setLoading]       = useState(false);
+
+  const [focusField, setFocusField] = useState(null);
   const [btnHover, setBtnHover]     = useState(false);
+
   const navigate = useNavigate();
 
-  // Injeta keyframes e fonte no <head> uma única vez
   useEffect(() => {
     if (!document.getElementById('bolao-css')) {
       const tag = document.createElement('style');
@@ -445,9 +511,18 @@ export default function Login() {
     }
   }, []);
 
+  // Limpa mensagens ao trocar de modo
+  const trocarModo = (novoModo) => {
+    setErro('');
+    setSucesso('');
+    setModo(novoModo);
+  };
+
+  // ── Login ──
   const handleLogin = async (e) => {
     e.preventDefault();
     setErro('');
+    setLoading(true);
 
     const formData = new FormData();
     formData.append('username', email);
@@ -459,8 +534,52 @@ export default function Login() {
       navigate('/jogos');
     } catch {
       setErro('E-mail ou senha incorretos. Verifique suas credenciais.');
+    } finally {
+      setLoading(false);
     }
   };
+
+  // ── Registro ──
+  const handleRegistro = async (e) => {
+    e.preventDefault();
+    setErro('');
+    setSucesso('');
+
+    if (regSenha !== regConfirma) {
+      setErro('As senhas não coincidem.');
+      return;
+    }
+    if (regSenha.length < 6) {
+      setErro('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.post('/usuarios/', {
+        nome: regNome,
+        email: regEmail,
+        senha: regSenha,
+      });
+      setSucesso('Conta criada com sucesso! Faça o login para entrar.');
+      setRegNome('');
+      setRegEmail('');
+      setRegSenha('');
+      setRegConfirma('');
+      setTimeout(() => trocarModo('login'), 2000);
+    } catch (err) {
+      const msg = err?.response?.data?.detail;
+      setErro(msg || 'Erro ao criar conta. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Helper para estilo do input ──
+  const inputStyle = (field) => ({
+    ...styles.input,
+    ...(focusField === field ? styles.inputFocus : {}),
+  });
 
   return (
     <div style={styles.container}>
@@ -489,7 +608,7 @@ export default function Login() {
         </div>
       ))}
 
-      {/* ── Card de login ── */}
+      {/* ── Card ── */}
       <div style={styles.card}>
         <div style={styles.cardTopLine} />
 
@@ -504,46 +623,152 @@ export default function Login() {
         <div style={styles.title}>Bolão Fielmino</div>
         <div style={styles.subtitle}>Copa do Mundo 2026</div>
 
-        {erro && <div style={styles.errorBox}>{erro}</div>}
-
-        <form onSubmit={handleLogin}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>E-mail</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onFocus={() => setEmailFocus(true)}
-              onBlur={() => setEmailFocus(false)}
-              style={{ ...styles.input, ...(emailFocus ? styles.inputFocus : {}) }}
-              placeholder="seu.email@exemplo.com"
-              required
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Senha</label>
-            <input
-              type="password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              onFocus={() => setSenhaFocus(true)}
-              onBlur={() => setSenhaFocus(false)}
-              style={{ ...styles.input, ...(senhaFocus ? styles.inputFocus : {}) }}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
+        {/* ── Tabs Login / Registrar ── */}
+        <div style={styles.modeTabs}>
           <button
-            type="submit"
-            style={{ ...styles.button, ...(btnHover ? styles.buttonHover : {}) }}
-            onMouseEnter={() => setBtnHover(true)}
-            onMouseLeave={() => setBtnHover(false)}
+            style={styles.modeTab(modo === 'login')}
+            onClick={() => trocarModo('login')}
+            type="button"
           >
-            ⚡ Entrar no Bolão
+            Entrar
           </button>
-        </form>
+          <button
+            style={styles.modeTab(modo === 'registro')}
+            onClick={() => trocarModo('registro')}
+            type="button"
+          >
+            Registrar
+          </button>
+        </div>
+
+        {erro    && <div style={styles.errorBox}>{erro}</div>}
+        {sucesso && <div style={styles.successBox}>{sucesso}</div>}
+
+        {/* ══ FORMULÁRIO DE LOGIN ══ */}
+        {modo === 'login' && (
+          <div key="login" style={styles.formSlide}>
+            <form onSubmit={handleLogin}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>E-mail</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => setFocusField('email')}
+                  onBlur={() => setFocusField(null)}
+                  style={inputStyle('email')}
+                  placeholder="seu.email@exemplo.com"
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Senha</label>
+                <input
+                  type="password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  onFocus={() => setFocusField('senha')}
+                  onBlur={() => setFocusField(null)}
+                  style={inputStyle('senha')}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  ...styles.button,
+                  ...(btnHover && !loading ? styles.buttonHover : {}),
+                  ...(loading ? styles.buttonDisabled : {}),
+                }}
+                onMouseEnter={() => setBtnHover(true)}
+                onMouseLeave={() => setBtnHover(false)}
+              >
+                {loading ? '⏳ Entrando...' : '⚡ Entrar no Bolão'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ══ FORMULÁRIO DE REGISTRO ══ */}
+        {modo === 'registro' && (
+          <div key="registro" style={styles.formSlide}>
+            <form onSubmit={handleRegistro}>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Nome</label>
+                <input
+                  type="text"
+                  value={regNome}
+                  onChange={(e) => setRegNome(e.target.value)}
+                  onFocus={() => setFocusField('regNome')}
+                  onBlur={() => setFocusField(null)}
+                  style={inputStyle('regNome')}
+                  placeholder="Seu nome"
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>E-mail</label>
+                <input
+                  type="email"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  onFocus={() => setFocusField('regEmail')}
+                  onBlur={() => setFocusField(null)}
+                  style={inputStyle('regEmail')}
+                  placeholder="seu.email@exemplo.com"
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Senha</label>
+                <input
+                  type="password"
+                  value={regSenha}
+                  onChange={(e) => setRegSenha(e.target.value)}
+                  onFocus={() => setFocusField('regSenha')}
+                  onBlur={() => setFocusField(null)}
+                  style={inputStyle('regSenha')}
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Confirmar Senha</label>
+                <input
+                  type="password"
+                  value={regConfirma}
+                  onChange={(e) => setRegConfirma(e.target.value)}
+                  onFocus={() => setFocusField('regConfirma')}
+                  onBlur={() => setFocusField(null)}
+                  style={inputStyle('regConfirma')}
+                  placeholder="Repita a senha"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  ...styles.button,
+                  ...(btnHover && !loading ? styles.buttonHover : {}),
+                  ...(loading ? styles.buttonDisabled : {}),
+                }}
+                onMouseEnter={() => setBtnHover(true)}
+                onMouseLeave={() => setBtnHover(false)}
+              >
+                {loading ? '⏳ Criando conta...' : '🏆 Criar Conta'}
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* ── Faixa de bandeiras ── */}
         <div style={styles.flagsStrip}>
